@@ -86,11 +86,19 @@ body{
 .btn--danger:hover{ background:var(--alarm); color:#fff; }
 .btn[disabled]{ opacity:.45; cursor:not-allowed; }
 
-.stack{ display:grid; gap:16px; }
-.row{ display:grid; gap:16px; grid-template-columns:1fr 1fr; }
+/* Almindeligt blokflow med margin i stedet for grid+gap.
+   Grid inde i grid inde i grid var for skroebeligt. */
+.stack{ display:block; }
+.stack > * { margin:0; }
+.stack > * + * { margin-top:16px; }
 
-.field{ display:grid; gap:6px; border:0; padding:0; margin:0; min-width:0; }
+.row{ display:flex; flex-wrap:wrap; gap:16px; }
+.row > *{ flex:1 1 170px; min-width:0; }
+
+.field{ display:block; border:0; padding:0; margin:0; min-width:0; }
 .field > span, .field > legend{
+  display:block;
+  margin-bottom:6px;
   font-family:var(--mono);
   font-size:.64rem;
   letter-spacing:.16em;
@@ -99,6 +107,8 @@ body{
   padding:0;
 }
 .field input, .field select, .field textarea{
+  display:block;
+  box-sizing:border-box;
   font:inherit;
   color:var(--ink);
   background:var(--card);
@@ -107,12 +117,13 @@ body{
   padding:11px 12px;
   width:100%;
   min-width:0;
+  min-height:46px;          /* saa et felt aldrig kan klappe sammen */
 }
-.field textarea{ resize:vertical; }
+.field textarea{ resize:vertical; min-height:86px; }
 .field input:focus, .field select:focus, .field textarea:focus{
   border-color:var(--ink); outline:none;
 }
-.field--rate{ display:grid; gap:10px; }
+.field--rate{ display:block; }
 
 .msg{ font-size:.9rem; margin:0; color:var(--ink-60); min-height:1.2em; }
 .msg--bad{ color:var(--alarm); }
@@ -343,9 +354,11 @@ body{
 /* Alt ligger absolut oven i hinanden, saa billedet altid fylder
    hele rammen uanset hoejde/bredde-forhold. Teksten skjules af
    JavaScript, ikke af :has(), som ikke virker i aeldre browsere. */
+/* height:0 + padding-bottom giver 5:4 uden aspect-ratio,
+   som ikke findes i aeldre browsere. */
 .photo{
   display:block; position:relative;
-  aspect-ratio:5/4;
+  height:0; padding-bottom:80%;
   background:var(--card);
   border:1.5px dashed var(--line);
   border-radius:var(--r);
