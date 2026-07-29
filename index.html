@@ -7,13 +7,13 @@
 <meta name="description" content="Kaffelog for to.">
 <meta name="theme-color" content="#16181c">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232b39c9'/%3E%3Cpath d='M16 7c4 3 4 6.5 0 9.5S12 22 16 25' stroke='%23eceee8' stroke-width='2.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="assets/icon.svg">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon.svg">
 <meta name="apple-mobile-web-app-title" content="Bønnebogen">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400..700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="./style.css">
 </head>
 <body>
 
@@ -161,6 +161,26 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-<script type="module" src="assets/app.js"></script>
+<!-- Vises kun hvis app.js aldrig nåede at køre — så siden aldrig bare er blank. -->
+<div id="boot-error" hidden style="max-width:34rem;margin:12vh auto;padding:0 22px;font-family:system-ui;line-height:1.55">
+  <h1 style="font-size:1.4rem;margin:0 0 .6em">Siden kunne ikke starte</h1>
+  <p style="margin:0 0 1em">Åbn browserens konsol (F12 → Console) og se hvilken fil der fejler. De typiske årsager:</p>
+  <ul style="margin:0 0 1em;padding-left:1.2em">
+    <li><b>404 på app.js eller style.css</b> — filerne ligger ikke der hvor <code>index.html</code> leder. Alle filer skal ligge samme sted.</li>
+    <li><b>Fejl i config.js</b> — Project URL og anon-nøgle er ikke sat rigtigt ind.</li>
+    <li><b>CORS eller modul-fejl</b> — du har åbnet filen med <code>file://</code>. Brug GitHub Pages eller <code>python3 -m http.server 8000</code>.</li>
+  </ul>
+</div>
+
+<script>
+  // Både login og appen starter skjult. Er de stadig skjult efter 5 sekunder,
+  // er app.js aldrig kørt, og så siger vi det i stedet for at vise ingenting.
+  setTimeout(function () {
+    var auth = document.getElementById('view-auth');
+    var app = document.getElementById('view-app');
+    if (auth.hidden && app.hidden) document.getElementById('boot-error').hidden = false;
+  }, 5000);
+</script>
+<script type="module" src="./app.js"></script>
 </body>
 </html>
