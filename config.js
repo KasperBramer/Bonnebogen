@@ -10,8 +10,8 @@
 //  der bestemmer hvem der må se og skrive hvad.
 // ============================================================
 
-export const SUPABASE_URL = 'https://DIT-PROJEKT.supabase.co';
-export const SUPABASE_ANON_KEY = 'DIN_ANON_PUBLIC_KEY';
+export const SUPABASE_URL = 'https://sb_publishable_Sotwe2NeQdQUuWhJfG07BQ_rpwGtjoS.supabase.co';
+export const SUPABASE_ANON_KEY = 'sb_secret_yX3z8-4U9S75AlnaJr7Z_A_XNOcr5Ig';
 
 // Navnet på jeres log — dukker op i toppen af siden.
 export const APP_NAME = 'Bønnebogen';
