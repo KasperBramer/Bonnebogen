@@ -87,13 +87,14 @@
 
   <form id="form-new" class="sheet__body stack" novalidate>
     <label class="photo" id="photo-drop">
-      <input type="file" id="new-photo" accept="image/*" capture="environment" hidden>
+      <input type="file" id="new-photo" accept="image/*" hidden>
       <img id="photo-preview" alt="" hidden>
-      <span class="photo__hint">
+      <span class="photo__hint" id="photo-hint">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="13" r="3.3" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
         Tag et billede
       </span>
     </label>
+    <p class="photo__name" id="photo-name" hidden></p>
 
     <label class="field">
       <span>Kaffen</span>
