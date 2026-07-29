@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bønnebogen</title>
+<meta name="description" content="Kaffelog for to.">
+<meta name="theme-color" content="#16181c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232b39c9'/%3E%3Cpath d='M16 7c4 3 4 6.5 0 9.5S12 22 16 25' stroke='%23eceee8' stroke-width='2.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icon.svg">
+<meta name="apple-mobile-web-app-title" content="Bønnebogen">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400..700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<!-- ---------- LOGIN ---------- -->
+<section id="view-auth" class="auth" hidden>
+  <div class="auth__inner">
+    <p class="eyebrow">Kaffelog for to</p>
+    <h1 class="auth__title">Bønne<br>bogen</h1>
+    <p class="auth__blurb">Hver kop får et nummer, et billede og to meninger.</p>
+
+    <form id="form-login" class="stack" novalidate>
+      <label class="field">
+        <span>E-mail</span>
+        <input type="email" id="login-email" autocomplete="email" required placeholder="dig@mail.dk">
+      </label>
+      <label class="field">
+        <span>Adgangskode</span>
+        <input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••">
+      </label>
+      <button class="btn btn--primary" type="submit" id="btn-login">Log ind</button>
+      <button class="btn btn--ghost" type="button" id="btn-magic">Send mig et login-link i stedet</button>
+      <p class="msg" id="auth-msg" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+</section>
+
+<!-- ---------- APPEN ---------- -->
+<div id="view-app" hidden>
+
+  <header class="topbar">
+    <div class="topbar__brand">
+      <span class="mark" aria-hidden="true"></span>
+      <span>
+        <b id="brand-name">Bønnebogen</b>
+        <i id="brand-tagline">kaffelog for to</i>
+      </span>
+    </div>
+    <button class="btn btn--tiny" id="btn-logout" type="button">Log ud</button>
+  </header>
+
+  <main class="wrap">
+
+    <section class="stats" id="stats" aria-label="Nøgletal"></section>
+
+    <nav class="segmented" id="sortbar" aria-label="Sortering">
+      <button type="button" data-sort="new" class="is-on">Nyeste</button>
+      <button type="button" data-sort="best">Bedste</button>
+      <button type="button" data-sort="split">Størst uenighed</button>
+      <button type="button" data-sort="todo">Mangler min dom</button>
+    </nav>
+
+    <div id="feed" class="feed"></div>
+
+    <p class="empty" id="empty" hidden>
+      <b>Ingen kaffe i bogen endnu.</b>
+      Tryk på plus-knappen og skriv den første ind.
+    </p>
+  </main>
+
+  <button class="fab" id="btn-new" type="button" aria-label="Tilføj kaffe">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+  </button>
+</div>
+
+<!-- ---------- NY KAFFE ---------- -->
+<dialog id="dlg-new" class="sheet">
+  <form method="dialog" class="sheet__head">
+    <h2>Ny kaffe</h2>
+    <button class="btn btn--tiny" value="cancel" type="submit">Luk</button>
+  </form>
+
+  <form id="form-new" class="sheet__body stack" novalidate>
+    <label class="photo" id="photo-drop">
+      <input type="file" id="new-photo" accept="image/*" capture="environment" hidden>
+      <img id="photo-preview" alt="" hidden>
+      <span class="photo__hint">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="13" r="3.3" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+        Tag et billede
+      </span>
+    </label>
+
+    <label class="field">
+      <span>Kaffen</span>
+      <input type="text" id="new-name" required maxlength="80" placeholder="Fx Kenya Kiambu AA">
+    </label>
+
+    <div class="row">
+      <label class="field">
+        <span>Rister</span>
+        <input type="text" id="new-roaster" maxlength="60" placeholder="La Cabra">
+      </label>
+      <label class="field">
+        <span>Oprindelse</span>
+        <input type="text" id="new-origin" maxlength="60" placeholder="Kenya">
+      </label>
+    </div>
+
+    <div class="row">
+      <label class="field">
+        <span>Sted</span>
+        <input type="text" id="new-place" maxlength="60" placeholder="Hjemme i køkkenet">
+      </label>
+      <label class="field">
+        <span>Metode</span>
+        <select id="new-method">
+          <option value="">—</option>
+          <option>Espresso</option>
+          <option>Cortado</option>
+          <option>Flat white</option>
+          <option>Filter / V60</option>
+          <option>Chemex</option>
+          <option>AeroPress</option>
+          <option>Stempelkande</option>
+          <option>Moka</option>
+          <option>Cold brew</option>
+          <option>Instant</option>
+          <option>Andet</option>
+        </select>
+      </label>
+    </div>
+
+    <fieldset class="field field--rate">
+      <legend>Din dom</legend>
+      <div class="stars stars--input" id="new-stars" role="radiogroup" aria-label="Stjerner"></div>
+    </fieldset>
+
+    <label class="field">
+      <span>Kort note</span>
+      <textarea id="new-note" rows="3" maxlength="400" placeholder="Syrlig, næsten som solbær. For varm."></textarea>
+    </label>
+
+    <p class="msg" id="new-msg" role="status" aria-live="polite"></p>
+    <button class="btn btn--primary" type="submit" id="btn-save">Skriv i bogen</button>
+  </form>
+</dialog>
+
+<!-- ---------- DETALJE ---------- -->
+<dialog id="dlg-detail" class="sheet">
+  <form method="dialog" class="sheet__head">
+    <h2 id="detail-title">Kaffe</h2>
+    <button class="btn btn--tiny" value="cancel" type="submit">Luk</button>
+  </form>
+  <div class="sheet__body" id="detail-body"></div>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script type="module" src="assets/app.js"></script>
+</body>
+</html>
