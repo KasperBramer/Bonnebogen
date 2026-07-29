@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bønnebogen — diagnose</title>
+<style>
+  body{ font:14px/1.5 system-ui,sans-serif; margin:0; padding:16px; background:#fff; color:#111; }
+  h1{ font-size:18px; margin:0 0 4px; }
+  h2{ font-size:14px; margin:22px 0 6px; text-transform:uppercase; letter-spacing:.08em; color:#555; }
+  p.lead{ margin:0 0 18px; color:#555; }
+  table{ border-collapse:collapse; width:100%; font-size:12px; font-family:ui-monospace,monospace; }
+  th,td{ border:1px solid #ddd; padding:5px 6px; text-align:left; vertical-align:top; }
+  th{ background:#f2f2f2; }
+  .ok{ color:#0a7d32; font-weight:700; }
+  .bad{ color:#b3341f; font-weight:700; }
+  .warn{ color:#a06000; font-weight:700; }
+  #verdict{ margin-top:22px; padding:14px; border:2px solid #111; border-radius:4px; font-size:15px; }
+  iframe{ position:absolute; left:-9999px; width:390px; height:900px; border:0; }
+</style>
+</head>
+<body>
+
+<h1>Bønnebogen — diagnose</h1>
+<p class="lead">Kør denne side fra samme mappe som <code>index.html</code>. Tag et skærmbillede af det hele.</p>
+
+<div id="out">Måler …</div>
+<div id="verdict" hidden></div>
+<iframe id="lab" title="testramme"></iframe>
+
+<script>
+const out = document.getElementById('out');
+const bust = '?cb=' + Date.now();          // uden om alle caches
+const rows = [];
+const note = (k, v, cls) => rows.push([k, v, cls || '']);
+
+function table(title, data){
+  let h = '<h2>' + title + '</h2><table><tr><th>Hvad</th><th>Resultat</th></tr>';
+  for (const [k, v, cls] of data) h += `<tr><td>${k}</td><td class="${cls}">${v}</td></tr>`;
+  return h + '</table>';
+}
+
+(async () => {
+  let html = '', css = '', fejl = [];
+
+  try { html = await (await fetch('index.html' + bust)).text(); }
+  catch (e) { fejl.push('kunne ikke hente index.html'); }
+  try { css = await (await fetch('style.css' + bust)).text(); }
+  catch (e) { fejl.push('kunne ikke hente style.css'); }
+
+  // ---- 1. hvilken version ligger der? ----
+  const filer = [
+    ['index.html hentet', html ? html.length + ' tegn' : 'FEJLEDE', html ? 'ok' : 'bad'],
+    ['style.css hentet',  css ? css.length + ' tegn'  : 'FEJLEDE', css ? 'ok' : 'bad'],
+    ['navnefeltet i HTML', html.includes('id="new-name"') ? 'JA' : 'NEJ — filen er forældet',
+      html.includes('id="new-name"') ? 'ok' : 'bad'],
+    ['gammelt &lt;fieldset&gt;', html.includes('<fieldset') ? 'JA — HTML er forældet' : 'nej',
+      html.includes('<fieldset') ? 'bad' : 'ok'],
+    ['ny CSS (min-height:46px)', css.includes('min-height:46px') ? 'JA' : 'NEJ — CSS er forældet',
+      css.includes('min-height:46px') ? 'ok' : 'bad'],
+    ['ny CSS (padding-bottom:80%)', css.includes('padding-bottom:80%') ? 'JA' : 'NEJ — CSS er forældet',
+      css.includes('padding-bottom:80%') ? 'ok' : 'bad']
+  ];
+
+  // ---- 2. byg formularen isoleret og mål den ----
+  const m = html.match(/<dialog id="dlg-new"[\s\S]*?<\/dialog>/);
+  let maal = [['formular fundet i HTML', m ? 'ja' : 'NEJ', m ? 'ok' : 'bad']];
+
+  if (m && css) {
+    const markup = m[0].replace('<dialog id="dlg-new"', '<dialog id="dlg-new" open');
+    const lab = document.getElementById('lab');
+    await new Promise(res => {
+      lab.onload = res;
+      lab.srcdoc = '<!DOCTYPE html><meta charset="utf-8"><style>' + css + '</style>' + markup;
+    });
+    await new Promise(r => setTimeout(r, 250));
+
+    const doc = lab.contentDocument;
+    const form = doc.getElementById('form-new');
+    maal = [];
+    if (!form) {
+      maal.push(['formularen', 'kunne ikke findes i testrammen', 'bad']);
+    } else {
+      [...form.children].forEach((el, i) => {
+        const cs = lab.contentWindow.getComputedStyle(el);
+        const h = Math.round(el.getBoundingClientRect().height);
+        const navn = el.id || el.className || el.tagName.toLowerCase();
+        const skjult = cs.display === 'none';
+        maal.push([
+          i + '. ' + navn,
+          'højde ' + h + 'px · display:' + cs.display,
+          skjult && !el.hasAttribute('hidden') ? 'bad' : (h === 0 && !skjult ? 'warn' : 'ok')
+        ]);
+      });
+      const n = doc.getElementById('new-name');
+      if (n) {
+        const cs = lab.contentWindow.getComputedStyle(n);
+        maal.push(['&rarr; selve navnefeltet',
+          'højde ' + Math.round(n.getBoundingClientRect().height) + 'px · display:' + cs.display +
+          ' · synlighed:' + cs.visibility + ' · opacitet:' + cs.opacity,
+          n.getBoundingClientRect().height > 10 ? 'ok' : 'bad']);
+      } else {
+        maal.push(['&rarr; selve navnefeltet', 'FINDES IKKE', 'bad']);
+      }
+    }
+  }
+
+  out.innerHTML = table('1. Hvilke filer ligger på serveren', filer)
+                + table('2. Formularen målt i en testramme', maal);
+
+  // ---- 3. konklusion ----
+  const v = document.getElementById('verdict');
+  const staleHtml = !html.includes('id="new-name"') || html.includes('<fieldset');
+  const staleCss = !css.includes('min-height:46px');
+  if (fejl.length)      v.innerHTML = '<b>Kunne ikke hente filerne.</b> Ligger diagnose.html samme sted som index.html?';
+  else if (staleHtml)   v.innerHTML = '<b>index.html på serveren er ikke den nyeste.</b> Læg den opdaterede fil op igen.';
+  else if (staleCss)    v.innerHTML = '<b>style.css på serveren er ikke den nyeste.</b> Læg den opdaterede fil op igen.';
+  else                  v.innerHTML = '<b>Begge filer er de nyeste.</b> Se tabel 2 — det felt med højde 0 er synderen.';
+  v.hidden = false;
+})();
+</script>
+</body>
+</html>
