@@ -329,17 +329,55 @@ function buildStarPicker(container, value, onPick) {
    BILLEDBEHANDLING
    ============================================================ */
 
+// Henter billedet som noget der kan tegnes paa et canvas.
+// createImageBitmap er hurtigst, men fejler paa fx HEIC i nogle
+// browsere, saa vi falder tilbage til et almindeligt <img>.
+async function loadDrawable(file) {
+  if (typeof createImageBitmap === 'function') {
+    try {
+      return await createImageBitmap(file, { imageOrientation: 'from-image' });
+    } catch { /* falder igennem */ }
+  }
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await (img.decode ? img.decode() : new Promise((ok, no) => {
+      img.onload = ok; img.onerror = () => no(new Error('kunne ikke laese billedet'));
+    }));
+    return img;
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+}
+
+// Skalerer ned og komprimerer. Gaar noget galt, sender vi filen
+// som den er i stedet for at afvise brugerens billede.
 async function shrink(file, maxSide = 1600, quality = 0.82) {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
-  const canvas = document.createElement('canvas');
-  canvas.width = w; canvas.height = h;
-  canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
-  bitmap.close?.();
-  const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
-  return blob ?? file;
+  try {
+    const src = await loadDrawable(file);
+    const sw = src.width || src.naturalWidth;
+    const sh = src.height || src.naturalHeight;
+    if (!sw || !sh) throw new Error('billedet har ingen stoerrelse');
+
+    const scale = Math.min(1, maxSide / Math.max(sw, sh));
+    const w = Math.round(sw * scale);
+    const h = Math.round(sh * scale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(src, 0, 0, w, h);
+    src.close?.();
+
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+    if (!blob) throw new Error('kunne ikke komprimere');
+    return { blob, type: 'image/jpeg', ext: 'jpg' };
+  } catch (err) {
+    console.warn('Nedskalering mislykkedes, sender originalen:', err);
+    const type = file.type || 'application/octet-stream';
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().slice(0, 5);
+    return { blob: file, type, ext };
+  }
 }
 
 /* ============================================================
@@ -351,22 +389,42 @@ const dlgNew = $('#dlg-new');
 $('#btn-new').addEventListener('click', () => {
   $('#form-new').reset();
   state.newStars = 0;
-  state.newFile = null;
-  $('#photo-preview').hidden = true;
-  $('#photo-preview').removeAttribute('src');
+  clearPhoto();
   $('#new-msg').textContent = '';
   $('#new-msg').classList.remove('msg--bad');
   buildStarPicker($('#new-stars'), 0, v => { state.newStars = v; });
   dlgNew.showModal();
 });
 
+function clearPhoto() {
+  const img = $('#photo-preview');
+  if (img.dataset.url) { URL.revokeObjectURL(img.dataset.url); delete img.dataset.url; }
+  img.hidden = true;
+  img.removeAttribute('src');
+  $('#photo-hint').hidden = false;
+  $('#photo-name').hidden = true;
+  $('#photo-name').textContent = '';
+  $('#new-photo').value = '';
+  state.newFile = null;
+}
+
 $('#new-photo').addEventListener('change', e => {
   const file = e.target.files?.[0];
-  if (!file) return;
+  if (!file) { clearPhoto(); return; }
+
   state.newFile = file;
   const img = $('#photo-preview');
-  img.src = URL.createObjectURL(file);
+  if (img.dataset.url) URL.revokeObjectURL(img.dataset.url);
+
+  const url = URL.createObjectURL(file);
+  img.dataset.url = url;
+  img.src = url;
   img.hidden = false;
+  $('#photo-hint').hidden = true;
+
+  const mb = (file.size / 1048576).toFixed(1);
+  $('#photo-name').textContent = `${file.name} · ${mb} MB · tryk for at skifte`;
+  $('#photo-name').hidden = false;
 });
 
 $('#form-new').addEventListener('submit', async e => {
@@ -384,10 +442,11 @@ $('#form-new').addEventListener('submit', async e => {
     let path = null;
     if (state.newFile) {
       msg.textContent = 'Lægger billedet op …';
-      const blob = await shrink(state.newFile);
-      path = `${state.user.id}/${crypto.randomUUID()}.jpg`;
-      const up = await sb.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg' });
-      if (up.error) throw up.error;
+      const { blob, type, ext } = await shrink(state.newFile);
+      const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
+      path = `${state.user.id}/${id}.${ext}`;
+      const up = await sb.storage.from(BUCKET).upload(path, blob, { contentType: type });
+      if (up.error) throw new Error('billedet kunne ikke lagres: ' + up.error.message);
     }
 
     msg.textContent = 'Gemmer …';
